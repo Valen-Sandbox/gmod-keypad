@@ -136,7 +136,7 @@ function SWEP:Succeed()
 	self:SetWeaponHoldType(self.IdleStance)
 
 	if SERVER and IsValid(ent) and tr.HitPos:Distance(self.Owner:GetShootPos()) <= 50 and ent.IsKeypad then
-		ent:Process(true)
+		ent:Process(true, self.Owner)
 
 		net.Start("KeypadCracker_Hold")
 			net.WriteEntity(self)
