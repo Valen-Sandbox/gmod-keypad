@@ -265,7 +265,7 @@ if(CLIENT) then
 		local ent = net.ReadEntity()
 		local state = (net.ReadBit() == 1)
 
-		if IsValid(ent) and ent:IsWeapon() and ent:GetClass():lower() == "keypad_cracker" and not game.SinglePlayer() and ent.SetWeaponHoldType then
+		if IsValid(ent) and ent:GetClass():lower() == "money_holder" and not game.SinglePlayer() and ent.SetWeaponHoldType then
 			if not state then
 				ent:SetWeaponHoldType(ent.IdleStance)
 				ent.IsCracking = false
