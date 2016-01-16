@@ -264,8 +264,12 @@ if(CLIENT) then
 	net.Receive("KeypadCracker_Hold", function()
 		local ent = net.ReadEntity()
 		local state = (net.ReadBit() == 1)
+		local allowed = {
+			["money_holder"] = true,
+			["keypad_cracker"] = true, 
+		}
 
-		if IsValid(ent) and ent:GetClass():lower() == "money_holder" and not game.SinglePlayer() and ent.SetWeaponHoldType then
+		if IsValid(ent) and allowed[ent:GetClass():lower()] and not game.SinglePlayer() and ent.SetWeaponHoldType then
 			if not state then
 				ent:SetWeaponHoldType(ent.IdleStance)
 				ent.IsCracking = false
