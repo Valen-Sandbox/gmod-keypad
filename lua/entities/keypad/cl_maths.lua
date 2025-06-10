@@ -21,9 +21,9 @@ function ENT:CalculateCursorPos()
 
 	local pos, ang = self:CalculateRenderPos(), self:CalculateRenderAng()
 	local normal = self:GetForward()
-	
+
 	local intersection = util.IntersectRayWithPlane(ply:EyePos(), ply:GetAimVector(), pos, normal)
-	
+
 	if not intersection then
 		return 0, 0
 	end
@@ -50,7 +50,7 @@ end
 function ENT:CalculateRenderAng()
 	local ang = self:GetAngles()
 		ang:RotateAroundAxis(ang:Right(), -90)
-		ang:RotateAroundAxis(ang:Up(), 90)	
+		ang:RotateAroundAxis(ang:Up(), 90)
 
 	return ang
 end

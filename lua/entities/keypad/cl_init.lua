@@ -19,7 +19,7 @@ function ENT:Draw()
 
 	local scale = self.Scale -- A high scale avoids surface call integerising from ruining aesthetics
 
-	cam.Start3D2D(pos, ang, self.Scale)
+	cam.Start3D2D(pos, ang, scale)
 		self:Paint(w, h, x, y)
 	cam.End3D2D()
 end

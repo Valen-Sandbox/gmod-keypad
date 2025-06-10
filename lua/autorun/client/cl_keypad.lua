@@ -1,4 +1,3 @@
-
 hook.Add("PlayerBindPress", "Keypad", function(ply, bind, pressed)
 	if not pressed then
 		return
@@ -27,9 +26,7 @@ hook.Add("PlayerBindPress", "Keypad", function(ply, bind, pressed)
 	end
 end)
 
-
 local physical_keypad_commands = {
-
 	[KEY_ENTER] = function(self)
 		self:SendCommand(self.Command_Accept)
 	end,
@@ -45,7 +42,6 @@ local physical_keypad_commands = {
 	[KEY_PAD_PLUS] = function(self)
 		self:SendCommand(self.Command_Abort)
 	end
-
 }
 
 for i = KEY_PAD_1, KEY_PAD_9 do
@@ -58,21 +54,18 @@ local last_press = 0
 
 local enter_strict = CreateConVar("keypad_willox_enter_strict", "0", FCVAR_ARCHIVE, "Only allow the numpad's enter key to be used to accept keypads' input")
 
-hook.Add("CreateMove", "Keypad", function(cmd)
-	
+hook.Add("CreateMove", "Keypad", function()
 	if RealTime() - 0.1 < last_press then
 		return
 	end
 
 	for key, handler in pairs(physical_keypad_commands) do
 		if input.WasKeyPressed(key) then
-
 			if enter_strict:GetBool() and key == KEY_ENTER then
 				continue
 			end
 
 			local ply = LocalPlayer()
-
 			local tr = util.TraceLine({
 				start = ply:EyePos(),
 				endpos = ply:EyePos() + ply:GetAimVector() * 65,
@@ -86,12 +79,10 @@ hook.Add("CreateMove", "Keypad", function(cmd)
 			end
 
 			last_press = RealTime()
-			
+
 			handler(ent)
 
 			return
-
 		end
 	end
-
 end)

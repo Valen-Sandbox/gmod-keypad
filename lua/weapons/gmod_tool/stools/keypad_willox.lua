@@ -1,38 +1,43 @@
-if (SERVER) then
-	CreateConVar('sbox_maxkeypads', 10)
-end
-
 TOOL.Category = "Construction"
 TOOL.Name = "Keypad"
 TOOL.Command = nil
 
-TOOL.ClientConVar['weld'] = '1'
-TOOL.ClientConVar['freeze'] = '1'
+TOOL.Information = {
+	{name = "left"},
+	{name = "right"}
+}
 
-TOOL.ClientConVar['password'] = '1234'
-TOOL.ClientConVar['secure'] = '0'
+TOOL.ClientConVar["weld"] = '1'
+TOOL.ClientConVar["freeze"] = '1'
 
-TOOL.ClientConVar['repeats_granted'] = '0'
-TOOL.ClientConVar['repeats_denied'] = '0'
+TOOL.ClientConVar["password"] = '1234'
+TOOL.ClientConVar["secure"] = '0'
 
-TOOL.ClientConVar['length_granted'] = '0.1'
-TOOL.ClientConVar['length_denied'] = '0.1'
+TOOL.ClientConVar["repeats_granted"] = '0'
+TOOL.ClientConVar["repeats_denied"] = '0'
 
-TOOL.ClientConVar['delay_granted'] = '0'
-TOOL.ClientConVar['delay_denied'] = '0'
+TOOL.ClientConVar["length_granted"] = '0.1'
+TOOL.ClientConVar["length_denied"] = '0.1'
 
-TOOL.ClientConVar['init_delay_granted'] = '0'
-TOOL.ClientConVar['init_delay_denied'] = '0'
+TOOL.ClientConVar["delay_granted"] = '0'
+TOOL.ClientConVar["delay_denied"] = '0'
 
-TOOL.ClientConVar['key_granted'] = '0'
-TOOL.ClientConVar['key_denied'] = '0'
+TOOL.ClientConVar["init_delay_granted"] = '0'
+TOOL.ClientConVar["init_delay_denied"] = '0'
+
+TOOL.ClientConVar["key_granted"] = '0'
+TOOL.ClientConVar["key_denied"] = '0'
+
+TOOL.ClientConVar["output_on"] = '1'
+TOOL.ClientConVar["output_off"] = '0'
 
 cleanup.Register("keypads")
 
 if CLIENT then
 	language.Add("tool.keypad_willox.name", "Keypad")
-	language.Add("tool.keypad_willox.0", "Left Click: Create, Right Click: Update")
-	language.Add("tool.keypad_willox.desc", "Creates Keypads for secure access")
+	language.Add("tool.keypad_willox.desc", "Creates keypads for secure access")
+	language.Add("tool.keypad_willox.left", "Create keypad")
+	language.Add("tool.keypad_willox.right", "Update keypad")
 
 	language.Add("Undone_Keypad", "Undone Keypad")
 	language.Add("Cleanup_keypads", "Keypads")
@@ -60,23 +65,26 @@ function TOOL:SetupKeypad(ent, pass)
 		KeyGranted = self:GetClientNumber("key_granted"),
 		KeyDenied = self:GetClientNumber("key_denied"),
 
-		Secure = util.tobool(self:GetClientNumber("secure")),
+		OutputOn = self:GetClientNumber("output_on"),
+		OutputOff = self:GetClientNumber("output_off"),
 
-		Owner = self:GetOwner()
+		Secure = tobool(self:GetClientNumber("secure")),
 	}
 
+	ent:SetKeypadOwner(self:GetOwner())
 	ent:SetData(data)
 end
 
 function TOOL:RightClick(tr)
-	if not IsValid(tr.Entity) or not tr.Entity:GetClass():lower() == "keypad" then return false end
+	if not IsValid(tr.Entity) then return false end
 
-	if CLIENT  then return true end
+	local class = tr.Entity:GetClass():lower()
+	if class ~= "keypad" and class ~= "keypad_wire" then return false end
+
+	if CLIENT then return true end
 
 	local ply = self:GetOwner()
 	local password = tonumber(ply:GetInfo("keypad_willox_password"))
-
-	local spawn_pos = tr.HitPos
 	local trace_ent = tr.Entity
 
 	if password == nil or (string.len(tostring(password)) > 4) or (string.find(tostring(password), "0")) then
@@ -84,7 +92,7 @@ function TOOL:RightClick(tr)
 		return false
 	end
 
-	if trace_ent.KeypadData.Owner == ply then
+	if trace_ent:GetKeypadOwner() == ply then
 		self:SetupKeypad(trace_ent, password)
 
 		return true
@@ -116,11 +124,11 @@ function TOOL:LeftClick(tr)
 
 	ent:SetPlayer(ply)
 
-	local freeze = util.tobool(self:GetClientNumber("freeze"))
-	local weld = util.tobool(self:GetClientNumber("weld"))
+	local freeze = tobool(self:GetClientNumber("freeze"))
+	local weld = tobool(self:GetClientNumber("weld"))
 
 	if freeze or weld then
-		local phys = ent:GetPhysicsObject() 
+		local phys = ent:GetPhysicsObject()
 
 		if IsValid(phys) then
 			phys:EnableMotion(false)
@@ -128,7 +136,7 @@ function TOOL:LeftClick(tr)
 	end
 
 	if weld then
-		local weld = constraint.Weld(ent, trace_ent, 0, 0, 0, true, false)
+		constraint.Weld(ent, trace_ent, 0, 0, 0, true, false)
 	end
 
 	self:SetupKeypad(ent, password)
@@ -144,7 +152,6 @@ function TOOL:LeftClick(tr)
 	return true
 end
 
-
 if CLIENT then
 	local function ResetSettings(ply)
 		ply:ConCommand("keypad_willox_repeats_granted 0")
@@ -155,12 +162,14 @@ if CLIENT then
 		ply:ConCommand("keypad_willox_delay_denied 0")
 		ply:ConCommand("keypad_willox_init_delay_granted 0")
 		ply:ConCommand("keypad_willox_init_delay_denied 0")
+		ply:ConCommand("keypad_willox_wire_output_on 1")
+		ply:ConCommand("keypad_willox_wire_output_off 0")
 	end
 
 	concommand.Add("keypad_willox_reset", ResetSettings)
 
 	function TOOL.BuildCPanel(CPanel)
-		local r, l = CPanel:TextEntry("Access Password", "keypad_willox_password")
+		local r = CPanel:TextEntry("Access Password", "keypad_willox_password")
 		r:SetTall(22)
 
 		CPanel:ControlHelp("Max Length: 4\nAllowed Digits: 1-9")
@@ -175,6 +184,11 @@ if CLIENT then
 			ctrl:SetLabel1("Access Granted Key")
 			ctrl:SetLabel2("Access Denied Key")
 		CPanel:AddPanel(ctrl)
+
+		if WireLib then
+			CPanel:NumSlider("Wire Output On:", "keypad_willox_wire_output_on", -10, 10, 0)
+			CPanel:NumSlider("Wire Output Off:", "keypad_willox_wire_output_off", -10, 10, 0)
+		end
 
 		local granted = vgui.Create("DForm")
 			granted:SetName("Access Granted Settings")
@@ -205,6 +219,6 @@ if CLIENT then
 
 		CPanel:Help("")
 
-		CPanel:Help("Created by Willox ( http://steamcommunity.com/id/wiox )")
+		CPanel:Help("Created by Willox ( https://steamcommunity.com/id/wiox )")
 	end
 end

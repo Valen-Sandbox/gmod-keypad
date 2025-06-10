@@ -5,44 +5,6 @@ AddCSLuaFile "sh_init.lua"
 
 include "sh_init.lua"
 
-util.AddNetworkString("Keypad_Wire")
-
-
-net.Receive("Keypad_Wire", function(_, ply)
-	local ent = net.ReadEntity()
-
-	if not IsValid(ply) or not IsValid(ent) or not ent:GetClass():lower() == "keypad_wire" then
-		return
-	end
-
-	if ent:GetStatus() ~= ent.Status_None then
-		return
-	end
-
-	if ply:EyePos():Distance(ent:GetPos()) >= 120 then
-		return
-	end
-
-	local command = net.ReadUInt(4)
-
-	if command == ent.Command_Enter then
-		local val = tonumber(ent:GetValue() .. net.ReadUInt(8))
-
-		if val and val > 0 and val <= 9999 then
-			ent:SetValue(tostring(val))
-			ent:EmitSound("buttons/button15.wav")
-		end
-	elseif command == ent.Command_Abort then
-		ent:SetValue("")
-	elseif command == ent.Command_Accept then
-		if ent:GetValue() == ent:GetPassword() then
-			ent:Process(true)
-		else
-			ent:Process(false)
-		end
-	end
-end)
-
 function ENT:SetValue(val)
 	self.Value = val
 
@@ -130,3 +92,7 @@ function ENT:Reset()
 	Wire_TriggerOutput(self, "Access Granted", self.KeypadData.OutputOff)
 	Wire_TriggerOutput(self, "Access Denied", self.KeypadData.OutputOff)
 end
+
+duplicator.RegisterEntityModifier("keypad_wire_password_passthrough", function(_, entity, data)
+	entity:SetData(data)
+end)

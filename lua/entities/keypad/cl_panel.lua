@@ -20,7 +20,7 @@ local function DrawLines(lines, x, y)
 		surface.DrawText(v)
 
 		y_off = y_off + h
-	end	
+	end
 end
 
 local elements = {
@@ -38,7 +38,7 @@ local elements = {
 
 				local text = self:GetText()
 
-				local textw, texth = surface.GetTextSize(text)			
+				local textw, texth = surface.GetTextSize(text)
 
 				surface.SetTextColor(color_white)
 				surface.SetTextPos(x - textw / 2, y - texth / 2)
@@ -97,7 +97,7 @@ do -- Create numbers
 		local column = (i - 1) % 3
 
 		local row = math.floor((i - 1) / 3)
-		
+
 		local element = {
 			x = 0.075 + (0.3 * column),
 			y = 0.175 + 0.25 + 0.05 + ((0.5 / 3) * row),
@@ -132,7 +132,7 @@ function ENT:Paint(w, h, x, y)
 		end
 
 		surface.DrawRect(
-			element_x, 
+			element_x,
 			element_y,
 			element_w,
 			element_h
@@ -171,7 +171,7 @@ function ENT:GetHoveredElement()
 		local element_h = h * element.h
 
 		if 	element_x < x and element_x + element_w > x and
-			element_y < y and element_y + element_h > y 
+			element_y < y and element_y + element_h > y
 		then
 			return element
 		end
