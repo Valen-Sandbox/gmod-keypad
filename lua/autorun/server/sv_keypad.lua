@@ -13,6 +13,9 @@ net.Receive("Keypad", function(_, ply)
 
 	if ent:GetStatus() ~= ent.Status_None then return end
 	if ply:EyePos():Distance(ent:GetPos()) >= 120 then return end
+	if ent.Next_Command_Time and ent.Next_Command_Time > CurTime() then return end
+
+	ent.Next_Command_Time = CurTime() + 0.05
 
 	local command = net.ReadUInt(4)
 
