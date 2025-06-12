@@ -22,6 +22,15 @@ AccessorFunc(ENT, "m_KeypadOwner", "KeypadOwner")
 
 function ENT:Initialize()
 	self:SetModel(self.Model)
+	self:PhysicsInit(SOLID_VPHYSICS)
+	self:SetMoveType(MOVETYPE_VPHYSICS)
+	self:SetSolid(SOLID_VPHYSICS)
+
+	local phys = self:GetPhysicsObject()
+
+	if IsValid(phys) then
+		phys:Wake()
+	end
 
 	if CLIENT then
 		self.Mins = self:OBBMins()
@@ -31,14 +40,6 @@ function ENT:Initialize()
 	end
 
 	if SERVER then
-		self:PhysicsInit(SOLID_VPHYSICS)
-
-		local phys = self:GetPhysicsObject()
-
-		if IsValid(phys) then
-			phys:Wake()
-		end
-
 		if WireLib then
 			self.Outputs = Wire_CreateOutputs(self, {"Access Granted", "Access Denied"})
 		end
@@ -47,7 +48,7 @@ function ENT:Initialize()
 		self:SetPassword("1337")
 		self:SetKeypadOwner(NULL)
 
-		if(not self.KeypadData) then
+		if not self.KeypadData then
 			self:SetData({
 				Password = 1337,
 

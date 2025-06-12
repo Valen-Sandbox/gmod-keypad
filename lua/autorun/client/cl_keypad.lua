@@ -51,7 +51,6 @@ for i = KEY_PAD_1, KEY_PAD_9 do
 end
 
 local last_press = 0
-
 local enter_strict = CreateConVar("keypad_willox_enter_strict", "0", FCVAR_ARCHIVE, "Only allow the numpad's enter key to be used to accept keypads' input")
 
 hook.Add("CreateMove", "Keypad", function()
@@ -86,3 +85,17 @@ hook.Add("CreateMove", "Keypad", function()
 		end
 	end
 end)
+
+surface.CreateFont("KeypadCrack", {
+	font = "Tahoma",
+	size = 100,
+	weight = 600,
+	antialias = true,
+})
+
+surface.CreateFont("KeypadCrackNumbers", {
+	font = "Tahoma",
+	size = 80,
+	weight = 600,
+	antialias = true,
+})

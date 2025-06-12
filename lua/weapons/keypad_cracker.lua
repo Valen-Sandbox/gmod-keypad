@@ -2,7 +2,7 @@
 
 AddCSLuaFile()
 
-local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE}, "Seconds for keypad cracker to crack keypad")
+local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE}, "The number of seconds required for a keypad cracker to crack a keypad.")
 
 SWEP.PrintName = "Keypad Cracker"
 SWEP.Slot = 4
@@ -11,7 +11,7 @@ SWEP.DrawAmmo = false
 SWEP.DrawCrosshair = true
 
 SWEP.Author = "Willox"
-SWEP.Instructions = "Left click to crack keypad"
+SWEP.Instructions = "Left click to crack keypad.\nRight click to deploy a cracker.\nHit Use on your deployed cracker to pick it up."
 SWEP.Contact = ""
 SWEP.Purpose = ""
 
@@ -27,6 +27,9 @@ SWEP.AnimPrefix = "python"
 
 SWEP.Sound = Sound("weapons/deagle/deagle-1.wav")
 
+SWEP.AttackTimer = 0.4
+SWEP.AttackDistance = 50
+
 SWEP.Primary.ClipSize = -1
 SWEP.Primary.DefaultClip = 0
 SWEP.Primary.Automatic = false
@@ -38,6 +41,7 @@ SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = ""
 
 SWEP.KeyCrackSound = Sound("buttons/blip2.wav")
+SWEP.CantUseSound = Sound("Weapon_Pistol.Empty")
 
 SWEP.IdleStance = "slam"
 
@@ -59,20 +63,27 @@ function SWEP:SetupDataTables()
 end
 
 function SWEP:PrimaryAttack()
-	self:SetNextPrimaryFire(CurTime() + 0.4)
+	self:SetNextPrimaryFire(CurTime() + self.AttackTimer)
 
 	local owner = self:GetOwner()
 	if self.IsCracking or not IsValid(owner) then return end
+	if owner:GetNWBool("_Kyle_Buildmode", false) then return end -- Only allow use while in PVP
 
 	local tr = owner:GetEyeTrace()
 	local ent = tr.Entity
+	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
+	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
-	if IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= 50 and ent.IsKeypad then
+	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
+		local crackTime = self:GetCrackTime()
+		local entindex = self:EntIndex()
+
 		self.IsCracking = true
 		self.StartCrack = CurTime()
-		self.EndCrack = CurTime() + self:GetCrackTime()
+		self.EndCrack = CurTime() + crackTime
 
 		self:SetWeaponHoldType("pistol") -- TODO: Send as networked message for other clients to receive
+		self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
 
 		if SERVER then
 			net.Start("KeypadCracker_Hold")
@@ -80,16 +91,20 @@ function SWEP:PrimaryAttack()
 				net.WriteBit(true)
 			net.Broadcast()
 
-			timer.Create("KeyCrackSounds: " .. self:EntIndex(), 1, self:GetCrackTime(), function()
+			timer.Create("KeyCrackSounds: " .. entindex, 1, crackTime, function()
 				if IsValid(self) and self.IsCracking then
-					self:EmitSound(self.KeyCrackSound, 100, 100)
+					self:EmitSound(self.KeyCrackSound)
+				end
+			end)
 
+			timer.Create("KeyCrackAnims: " .. entindex, 2.75, crackTime, function()
+				if IsValid(self) and self.IsCracking then
+					self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
 				end
 			end)
 		else
 			self.Dots = self.Dots or ""
 
-			local entindex = self:EntIndex()
 			timer.Create("KeyCrackDots: " .. entindex, 0.5, 0, function()
 				if not IsValid(self) then
 					timer.Remove("KeyCrackDots: " .. entindex)
@@ -101,6 +116,42 @@ function SWEP:PrimaryAttack()
 				end
 			end)
 		end
+	else
+		self:EmitSound(self.CantUseSound)
+	end
+end
+
+function SWEP:SecondaryAttack()
+	local curTime = CurTime()
+	self:SetNextSecondaryFire(curTime + self.AttackTimer)
+
+	local owner = self:GetOwner()
+	if self.IsCracking or not IsValid(owner) then return end
+
+	local tr = owner:GetEyeTrace()
+	local ent = tr.Entity
+	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
+	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
+
+	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
+		self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
+		self:SetNextPrimaryFire(curTime + 1)
+		self:SetNextSecondaryFire(curTime + 1)
+
+		timer.Simple(0.5, function()
+			if CLIENT or not IsValid(self) or self.IsCracking then return end
+			if not IsValid(ent) or ent.IsBeingCracked then return end
+
+			local cracker = ents.Create("keypad_cracker_deployed")
+			cracker:SetKeypad(ent)
+			cracker:SetCrackerOwner(owner)
+			cracker:Spawn()
+
+			ent.IsBeingCracked = true
+			owner:StripWeapon("keypad_cracker")
+		end)
+	else
+		self:EmitSound(self.CantUseSound)
 	end
 end
 
@@ -127,8 +178,9 @@ function SWEP:Succeed()
 	local tr = owner:GetEyeTrace()
 	local ent = tr.Entity
 	self:SetWeaponHoldType(self.IdleStance)
+	self:SendWeaponAnim(ACT_VM_IDLE)
 
-	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= 50 and ent.IsKeypad then
+	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance and ent.IsKeypad then
 		ent:Process(true, owner)
 
 		net.Start("KeypadCracker_Hold")
@@ -152,6 +204,7 @@ function SWEP:Fail()
 	self.IsCracking = false
 
 	self:SetWeaponHoldType(self.IdleStance)
+	self:SendWeaponAnim(ACT_VM_IDLE)
 
 	if SERVER then
 		net.Start("KeypadCracker_Hold")
@@ -176,7 +229,7 @@ function SWEP:Think()
 	if self.IsCracking and IsValid(owner) then
 		local tr = owner:GetEyeTrace()
 
-		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > 50 or not tr.Entity.IsKeypad then
+		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > self.AttackDistance or not tr.Entity.IsKeypad then
 			self:Fail()
 		elseif self.EndCrack <= CurTime() then
 			self:Succeed()
@@ -191,51 +244,63 @@ function SWEP:Think()
 end
 
 if CLIENT then
-	SWEP.BoxColor = Color(10, 10, 10, 100)
+	SWEP.BoxColor = Color(10, 10, 10, 200)
 
-	surface.CreateFont("KeypadCrack", {
-		font = "Trebuchet",
-		size = 18,
-		weight = 600,
-	})
+	-- HUD code adapted from https://github.com/AbstractDimension/gmod-keypad/blob/master/lua/weapons/keypad_cracker.lua#L201
+	function SWEP:PostDrawViewModel(vm)
+		if not self.IsCracking then return end
 
-	function SWEP:DrawHUD()
-		if self.IsCracking then
-			if not self.StartCrack then
-				self.StartCrack = CurTime()
-				self.EndCrack = CurTime() + self:GetCrackTime()
-			end
+		local curTime = CurTime()
 
-			local frac = math.Clamp((CurTime() - self.StartCrack) / (self.EndCrack - self.StartCrack), 0, 1) -- Between 0 and 1 (a fraction omg segregation)
-
-			local dots = self.Dots or ""
-
-			local w, h = ScrW(), ScrH()
-
-			local x, y = (w / 2) - 150, (h / 2) - 25
-			local w, h = 300, 50
-
-			draw.RoundedBox(4, x, y, w, h, self.BoxColor)
-
-			surface.SetDrawColor(Color(255 + (frac * -255), frac * 255, 40))
-			surface.DrawRect(x + 5, y + 5, frac * (w - 10), h - 10)
-
-			surface.SetFont("KeypadCrack")
-			local fontw, fonth = surface.GetTextSize("Cracking")
-			local fontx, fonty = (x + (w / 2)) - (fontw / 2), (y + (h / 2)) - (fonth / 2)
-
-			surface.SetTextPos(fontx + 1, fonty + 1)
-			surface.SetTextColor(color_black)
-			surface.DrawText("Cracking" .. dots)
-
-			surface.SetTextPos(fontx, fonty)
-			surface.SetTextColor(color_white)
-			surface.DrawText("Cracking" .. dots)
+		if not self.StartCrack then
+			self.StartCrack = curTime
+			self.EndCrack = curTime + self:GetCrackTime()
 		end
+
+		if not IsValid(vm) then return end
+
+		local bone = vm:LookupBone("v_weapon.c4")
+		if not bone then return end
+
+		local pos, ang = vm:GetBonePosition(bone)
+		if not pos then return end
+
+		ang:RotateAroundAxis(ang:Right(), 180)
+		ang:RotateAroundAxis(ang:Forward(), -90)
+		cam.Start3D2D(pos - ang:Right() * 0.75 + ang:Up() * 3.6 + ang:Forward() * 4.33, ang, 0.005)
+
+		local frac = math.Clamp((curTime - self.StartCrack) / (self.EndCrack - self.StartCrack), 0, 1)
+		local dots = self.Dots or ""
+		local x, y = -340, -35
+		local w, h = 680, 100
+		draw.RoundedBox(4, x, y, w, h, self.BoxColor)
+		surface.SetDrawColor(Color(255 + frac * -255, frac * 255, 40))
+		surface.DrawRect(x + 5, y + 5, frac * (w - 10), h - 10)
+		surface.SetFont("KeypadCrack")
+
+		local fontw, fonth = surface.GetTextSize("Cracking")
+		local fontx, fonty = (x + w / 2) - fontw / 2, (y + h / 2) - fonth / 2
+
+		surface.SetTextPos(fontx, fonty - 120)
+		surface.SetTextColor(color_black)
+		surface.DrawText("Cracking" .. dots)
+		surface.SetTextPos(fontx, fonty - 120)
+		surface.SetTextColor(color_white)
+		surface.DrawText("Cracking" .. dots)
+
+		local timeLeft = math.Round(self.EndCrack - curTime, 1)
+		surface.SetFont("KeypadCrackNumbers")
+		surface.SetTextPos(fontx - 90, fonty + 110)
+		surface.SetTextColor(color_black)
+		surface.DrawText(timeLeft .. " seconds left")
+		surface.SetTextPos(fontx - 90, fonty + 110)
+		surface.SetTextColor(color_white)
+		surface.DrawText(timeLeft .. " seconds left")
+
+		cam.End3D2D()
 	end
 
 	SWEP.DownAngle = Angle(-10, 0, 0)
-
 	SWEP.LowerPercent = 1
 	SWEP.SwayScale = 0
 

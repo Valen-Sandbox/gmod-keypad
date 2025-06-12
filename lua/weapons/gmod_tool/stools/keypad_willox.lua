@@ -28,16 +28,16 @@ TOOL.ClientConVar["init_delay_denied"] = '0'
 TOOL.ClientConVar["key_granted"] = '0'
 TOOL.ClientConVar["key_denied"] = '0'
 
-TOOL.ClientConVar["output_on"] = '1'
-TOOL.ClientConVar["output_off"] = '0'
+TOOL.ClientConVar["wire_output_on"] = '1'
+TOOL.ClientConVar["wire_output_off"] = '0'
 
 cleanup.Register("keypads")
 
 if CLIENT then
 	language.Add("tool.keypad_willox.name", "Keypad")
 	language.Add("tool.keypad_willox.desc", "Creates keypads for secure access")
-	language.Add("tool.keypad_willox.left", "Create keypad")
-	language.Add("tool.keypad_willox.right", "Update keypad")
+	language.Add("tool.keypad_willox.left", "Create/update keypad")
+	language.Add("tool.keypad_willox.right", "Copy keypad settings")
 
 	language.Add("Undone_Keypad", "Undone Keypad")
 	language.Add("Cleanup_keypads", "Keypads")
@@ -65,8 +65,8 @@ function TOOL:SetupKeypad(ent, pass)
 		KeyGranted = self:GetClientNumber("key_granted"),
 		KeyDenied = self:GetClientNumber("key_denied"),
 
-		OutputOn = self:GetClientNumber("output_on"),
-		OutputOff = self:GetClientNumber("output_off"),
+		OutputOn = self:GetClientNumber("wire_output_on"),
+		OutputOff = self:GetClientNumber("wire_output_off"),
 
 		Secure = tobool(self:GetClientNumber("secure")),
 	}
@@ -76,43 +76,61 @@ function TOOL:SetupKeypad(ent, pass)
 end
 
 function TOOL:RightClick(tr)
-	if not IsValid(tr.Entity) then return false end
+	local trace_ent = tr.Entity
+	if not IsValid(trace_ent) then return false end
 
-	local class = tr.Entity:GetClass():lower()
+	local class = trace_ent:GetClass():lower()
 	if class ~= "keypad" and class ~= "keypad_wire" then return false end
 
 	if CLIENT then return true end
 
+	local data = trace_ent:GetData()
 	local ply = self:GetOwner()
-	local password = tonumber(ply:GetInfo("keypad_willox_password"))
-	local trace_ent = tr.Entity
 
-	if password == nil or (string.len(tostring(password)) > 4) or (string.find(tostring(password), "0")) then
-		ply:PrintMessage(3, "Invalid password!")
-		return false
-	end
+	if trace_ent:GetKeypadOwner() ~= ply then return false end
 
-	if trace_ent:GetKeypadOwner() == ply then
-		self:SetupKeypad(trace_ent, password)
-
-		return true
-	end
+	ply:ConCommand("keypad_willox_password " .. tostring(data.Password))
+	ply:ConCommand("keypad_willox_secure " .. tostring(data.Secure))
+	ply:ConCommand("keypad_willox_repeats_granted " .. tostring(data.RepeatsGranted))
+	ply:ConCommand("keypad_willox_repeats_denied " .. tostring(data.RepeatsDenied))
+	ply:ConCommand("keypad_willox_length_granted " .. tostring(data.LengthGranted))
+	ply:ConCommand("keypad_willox_length_denied " .. tostring(data.LengthDenied))
+	ply:ConCommand("keypad_willox_delay_granted " .. tostring(data.DelayGranted))
+	ply:ConCommand("keypad_willox_delay_denied " .. tostring(data.DelayDenied))
+	ply:ConCommand("keypad_willox_init_delay_granted " .. tostring(data.InitDelayGranted))
+	ply:ConCommand("keypad_willox_init_delay_denied " .. tostring(data.InitDelayDenied))
+	ply:ConCommand("keypad_willox_key_granted " .. tostring(data.KeyGranted))
+	ply:ConCommand("keypad_willox_key_denied " .. tostring(data.KeyDenied))
+	ply:ConCommand("keypad_willox_wire_output_on " .. tostring(data.OutputOn))
+	ply:ConCommand("keypad_willox_wire_output_off " .. tostring(data.OutputOff))
 end
 
 function TOOL:LeftClick(tr)
-	if IsValid(tr.Entity) and tr.Entity:GetClass():lower() == "player" then return false end
+	local trace_ent = tr.Entity
+	local class
 
+	if IsValid(trace_ent) then
+		class = trace_ent:GetClass():lower()
+	end
+
+	if class == "player" then return false end
 	if CLIENT then return true end
 
 	local ply = self:GetOwner()
 	local password = self:GetClientNumber("password")
 
 	local spawn_pos = tr.HitPos + tr.HitNormal
-	local trace_ent = tr.Entity
 
 	if password == nil or (string.len(tostring(password)) > 4) or (string.find(tostring(password), "0")) then
 		ply:PrintMessage(3, "Invalid password!")
 		return false
+	end
+
+	-- Update an existing keypad
+	if (class == "keypad" or class == "keypad_wire") and trace_ent:GetKeypadOwner() == ply then
+		self:SetupKeypad(trace_ent, password)
+
+		return true
 	end
 
 	if not self:GetWeapon():CheckLimit("keypads") then return false end
