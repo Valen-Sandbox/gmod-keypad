@@ -2,7 +2,7 @@
 
 AddCSLuaFile()
 
-local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE}, "The number of seconds required for a keypad cracker to crack a keypad.")
+local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE}, "The number of seconds required for a keypad cracker to crack a keypad.", 0)
 
 SWEP.PrintName = "Keypad Cracker"
 SWEP.Slot = 4
@@ -25,7 +25,7 @@ SWEP.Spawnable = true
 SWEP.AdminOnly = false
 SWEP.AnimPrefix = "python"
 
-SWEP.Sound = Sound("weapons/deagle/deagle-1.wav")
+SWEP.Sound = "weapons/deagle/deagle-1.wav"
 
 SWEP.AttackTimer = 0.4
 SWEP.AttackDistance = 50
@@ -40,8 +40,10 @@ SWEP.Secondary.DefaultClip = -1
 SWEP.Secondary.Automatic = false
 SWEP.Secondary.Ammo = ""
 
-SWEP.KeyCrackSound = Sound("buttons/blip2.wav")
-SWEP.CantUseSound = Sound("Weapon_Pistol.Empty")
+SWEP.KeyCrackSound = "buttons/blip2.wav"
+SWEP.CantUseSound = "buttons/combine_button_locked.wav"
+SWEP.FailSound = "buttons/blip1.wav"
+SWEP.MiscSoundVolume = 0.35
 
 SWEP.IdleStance = "slam"
 
@@ -54,12 +56,12 @@ function SWEP:Initialize()
 			net.WriteBit(true)
 		net.Broadcast()
 
-		self:SetCrackTime( keypad_crack_time:GetInt() )
+		self:SetCrackTime(keypad_crack_time:GetInt())
 	end
 end
 
 function SWEP:SetupDataTables()
-	self:NetworkVar( "Int", 0, "CrackTime" )
+	self:NetworkVar("Int", 0, "CrackTime")
 end
 
 function SWEP:PrimaryAttack()
@@ -75,13 +77,14 @@ function SWEP:PrimaryAttack()
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
 	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
-		local crackTime = self:GetCrackTime()
+		local crackTime = keypad_crack_time:GetInt()
 		local entindex = self:EntIndex()
 
 		self.IsCracking = true
 		self.StartCrack = CurTime()
 		self.EndCrack = CurTime() + crackTime
 
+		self:SetCrackTime(crackTime)
 		self:SetWeaponHoldType("pistol") -- TODO: Send as networked message for other clients to receive
 		self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
 
@@ -93,7 +96,9 @@ function SWEP:PrimaryAttack()
 
 			timer.Create("KeyCrackSounds: " .. entindex, 1, crackTime, function()
 				if IsValid(self) and self.IsCracking then
-					self:EmitSound(self.KeyCrackSound)
+					local soundPitch = Lerp((CurTime() - self.StartCrack) / crackTime, 75, 125)
+					 -- Setting the channel prevents the viewmodel sounds from interfering with these ones
+					self:EmitSound(self.KeyCrackSound, 100, soundPitch, 1, CHAN_AUTO)
 				end
 			end)
 
@@ -117,7 +122,7 @@ function SWEP:PrimaryAttack()
 			end)
 		end
 	else
-		self:EmitSound(self.CantUseSound)
+		self:EmitSound(self.CantUseSound, 100, 100, self.MiscSoundVolume)
 	end
 end
 
@@ -134,9 +139,11 @@ function SWEP:SecondaryAttack()
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
 	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
+		owner:SetAnimation(PLAYER_ATTACK1)
 		self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
 		self:SetNextPrimaryFire(curTime + 1)
 		self:SetNextSecondaryFire(curTime + 1)
+		self:EmitSound("buttons/button6.wav", 100, 100, 0.35)
 
 		timer.Simple(0.5, function()
 			if CLIENT or not IsValid(self) or self.IsCracking then return end
@@ -151,17 +158,25 @@ function SWEP:SecondaryAttack()
 			owner:StripWeapon("keypad_cracker")
 		end)
 	else
-		self:EmitSound(self.CantUseSound)
+		self:EmitSound(self.CantUseSound, 100, 100, 0.35)
 	end
+end
+
+function SWEP:Deploy()
+	self:EmitSound("npc/roller/mine/combine_mine_deploy1.wav", 75, 100, self.MiscSoundVolume)
 end
 
 function SWEP:Holster()
 	self.IsCracking = false
+	self:EmitSound("npc/roller/mine/combine_mine_deactivate1.wav", 75, 100, self.MiscSoundVolume)
+
+	local entIndex = self:EntIndex()
 
 	if SERVER then
-		timer.Remove("KeyCrackSounds: " .. self:EntIndex())
+		timer.Remove("KeyCrackSounds: " .. entIndex)
+		timer.Remove("KeyCrackAnims: " .. entIndex)
 	else
-		timer.Remove("KeyCrackDots: " .. self:EntIndex())
+		timer.Remove("KeyCrackDots: " .. entIndex)
 	end
 
 	return true
@@ -177,6 +192,7 @@ function SWEP:Succeed()
 	local owner = self:GetOwner()
 	local tr = owner:GetEyeTrace()
 	local ent = tr.Entity
+
 	self:SetWeaponHoldType(self.IdleStance)
 	self:SendWeaponAnim(ACT_VM_IDLE)
 
@@ -193,18 +209,24 @@ function SWEP:Succeed()
 		net.Broadcast()
 	end
 
+	local entIndex = self:EntIndex()
+
 	if SERVER then
-		timer.Remove("KeyCrackSounds: " .. self:EntIndex())
+		timer.Remove("KeyCrackSounds: " .. entIndex)
+		timer.Remove("KeyCrackAnims: " .. entIndex)
 	else
-		timer.Remove("KeyCrackDots: " .. self:EntIndex())
+		timer.Remove("KeyCrackDots: " .. entIndex)
 	end
 end
 
 function SWEP:Fail()
 	self.IsCracking = false
 
+	local entIndex = self:EntIndex()
+
 	self:SetWeaponHoldType(self.IdleStance)
 	self:SendWeaponAnim(ACT_VM_IDLE)
+	self:EmitSound(self.FailSound, 100, 50, self.MiscSoundVolume)
 
 	if SERVER then
 		net.Start("KeypadCracker_Hold")
@@ -212,9 +234,10 @@ function SWEP:Fail()
 			net.WriteBit(true)
 		net.Broadcast()
 
-		timer.Remove("KeyCrackSounds: " .. self:EntIndex())
+		timer.Remove("KeyCrackSounds: " .. entIndex)
+		timer.Remove("KeyCrackAnims: " .. entIndex)
 	else
-		timer.Remove("KeyCrackDots: " .. self:EntIndex())
+		timer.Remove("KeyCrackDots: " .. entIndex)
 	end
 end
 
@@ -267,7 +290,7 @@ if CLIENT then
 
 		ang:RotateAroundAxis(ang:Right(), 180)
 		ang:RotateAroundAxis(ang:Forward(), -90)
-		cam.Start3D2D(pos - ang:Right() * 0.75 + ang:Up() * 3.6 + ang:Forward() * 4.33, ang, 0.005)
+		cam.Start3D2D(pos - ang:Right() * 0.75 + ang:Up() * 3.65 + ang:Forward() * 4.33, ang, 0.005)
 
 		local frac = math.Clamp((curTime - self.StartCrack) / (self.EndCrack - self.StartCrack), 0, 1)
 		local dots = self.Dots or ""

@@ -1,19 +1,19 @@
-surface.CreateFont("KeypadAbort", {font = "Roboto", size = 45, weight = 900})
-surface.CreateFont("KeypadOK", {font = "Roboto", size = 60, weight = 900})
-surface.CreateFont("KeypadNumber", {font = "Roboto", size = 70, weight = 600})
-surface.CreateFont("KeypadEntry", {font = "Roboto", size = 120, weight = 900})
-surface.CreateFont("KeypadStatus", {font = "Roboto", size = 60, weight = 900})
+surface.CreateFont("KeypadAbort", {font = "Roboto", size = 45, weight = 900, antialias = true})
+surface.CreateFont("KeypadOK", {font = "Roboto", size = 60, weight = 900, antialias = true})
+surface.CreateFont("KeypadNumber", {font = "Roboto", size = 70, weight = 600, antialias = true})
+surface.CreateFont("KeypadEntry", {font = "Roboto", size = 120, weight = 900, antialias = true})
+surface.CreateFont("KeypadStatus", {font = "Roboto", size = 60, weight = 900, antialias = true})
 
 local COLOR_GREEN = Color(0, 255, 0)
 local COLOR_RED = 	Color(255, 0, 0)
 
 local function DrawLines(lines, x, y)
 	local text = table.concat(lines, "\n")
-	local total_w, total_h = surface.GetTextSize(text)
+	local _, total_h = surface.GetTextSize(text)
 
 	local y_off = 0
 
-	for k, v in ipairs(lines) do
+	for _, v in ipairs(lines) do
 		local w, h = surface.GetTextSize(v)
 
 		surface.SetTextPos(x - w / 2, y - total_h / 2 + y_off)
