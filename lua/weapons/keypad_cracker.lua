@@ -14,6 +14,7 @@ SWEP.Author = "Willox"
 SWEP.Instructions = "Left click to crack keypad.\nRight click to deploy a cracker.\nHit Use on your deployed cracker to pick it up."
 SWEP.Contact = ""
 SWEP.Purpose = ""
+SWEP.IconOverride = "spawnicons/models/weapons/w_c4_planted.png"
 
 SWEP.ViewModelFOV = 62
 SWEP.ViewModelFlip = false
