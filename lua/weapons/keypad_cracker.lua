@@ -83,7 +83,7 @@ function SWEP:PrimaryAttack()
 	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
-	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass()] and not ent.IsBeingCracked then
+	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass():lower()] and not ent.IsBeingCracked then
 		local crackTime = keypad_crack_time:GetInt()
 		local entindex = self:EntIndex()
 
@@ -145,7 +145,7 @@ function SWEP:SecondaryAttack()
 	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
-	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass()] and not ent.IsBeingCracked then
+	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass():lower()] and not ent.IsBeingCracked then
 		owner:SetAnimation(PLAYER_ATTACK1)
 		self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
 		self:SetNextPrimaryFire(curTime + 1)
@@ -221,7 +221,7 @@ function SWEP:Succeed()
 	self:SetWeaponHoldType(self.IdleStance)
 	self:SendWeaponAnim(ACT_VM_IDLE)
 
-	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance and crackableClasses[ent:GetClass()] then
+	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance and crackableClasses[ent:GetClass():lower()] then
 		if ent:GetClass() == "gmod_wire_keypad" then
 			crackWiremodKeypad(ent)
 		else
@@ -281,7 +281,7 @@ function SWEP:Think()
 	if self.IsCracking and IsValid(owner) then
 		local tr = owner:GetEyeTrace()
 
-		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > self.AttackDistance or not crackableClasses[tr.Entity:GetClass()] then
+		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > self.AttackDistance or not crackableClasses[tr.Entity:GetClass():lower()] then
 			self:Fail()
 		elseif self.EndCrack <= CurTime() then
 			self:Succeed()
