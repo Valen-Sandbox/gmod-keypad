@@ -48,6 +48,12 @@ SWEP.MiscSoundVolume = 0.35
 
 SWEP.IdleStance = "slam"
 
+local crackableClasses = {
+	["keypad"] = true,
+	["keypad_wire"] = true,
+	["gmod_wire_keypad"] = true, -- Wiremod's own keypad
+}
+
 function SWEP:Initialize()
 	self:SetHoldType(self.IdleStance)
 
@@ -77,7 +83,7 @@ function SWEP:PrimaryAttack()
 	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
-	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
+	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass()] and not ent.IsBeingCracked then
 		local crackTime = keypad_crack_time:GetInt()
 		local entindex = self:EntIndex()
 
@@ -98,7 +104,7 @@ function SWEP:PrimaryAttack()
 			timer.Create("KeyCrackSounds: " .. entindex, 1, crackTime, function()
 				if IsValid(self) and self.IsCracking then
 					local soundPitch = Lerp((CurTime() - self.StartCrack) / crackTime, 75, 125)
-					 -- Setting the channel prevents the viewmodel sounds from interfering with these ones
+					-- Setting the channel prevents the viewmodel sounds from interfering with these ones
 					self:EmitSound(self.KeyCrackSound, 100, soundPitch, 1, CHAN_AUTO)
 				end
 			end)
@@ -139,7 +145,7 @@ function SWEP:SecondaryAttack()
 	local withinRange = tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance
 	local inBuild = owner:GetNWBool("_Kyle_Buildmode", false) -- Only allow use while in PVP
 
-	if IsValid(ent) and withinRange and not inBuild and ent.IsKeypad and not ent.IsBeingCracked then
+	if IsValid(ent) and withinRange and not inBuild and crackableClasses[ent:GetClass()] and not ent.IsBeingCracked then
 		owner:SetAnimation(PLAYER_ATTACK1)
 		self:SendWeaponAnim(ACT_VM_SECONDARYATTACK)
 		self:SetNextPrimaryFire(curTime + 1)
@@ -187,6 +193,24 @@ function SWEP:Reload()
 	return true
 end
 
+-- Adapted from Wiremod's keypad code
+local function crackWiremodKeypad(ent)
+	Wire_TriggerOutput(ent, "Valid", 1)
+	ent:SetDisplayText("y")
+	ent:EmitSound("buttons/button9.wav")
+
+	ent.CurrentNum = -1
+
+	timer.Simple(2, function()
+		if IsValid(ent) then
+			ent:SetDisplayText("")
+			ent.CurrentNum = 0
+
+			Wire_TriggerOutput(ent, "Valid", 0)
+		end
+	end)
+end
+
 function SWEP:Succeed()
 	self.IsCracking = false
 
@@ -197,8 +221,12 @@ function SWEP:Succeed()
 	self:SetWeaponHoldType(self.IdleStance)
 	self:SendWeaponAnim(ACT_VM_IDLE)
 
-	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance and ent.IsKeypad then
-		ent:Process(true, owner)
+	if SERVER and IsValid(ent) and tr.HitPos:Distance(owner:GetShootPos()) <= self.AttackDistance and crackableClasses[ent:GetClass()] then
+		if ent:GetClass() == "gmod_wire_keypad" then
+			crackWiremodKeypad(ent)
+		else
+			ent:Process(true, owner)
+		end
 
 		net.Start("KeypadCracker_Hold")
 			net.WriteEntity(self)
@@ -253,7 +281,7 @@ function SWEP:Think()
 	if self.IsCracking and IsValid(owner) then
 		local tr = owner:GetEyeTrace()
 
-		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > self.AttackDistance or not tr.Entity.IsKeypad then
+		if not IsValid(tr.Entity) or tr.HitPos:Distance(owner:GetShootPos()) > self.AttackDistance or not crackableClasses[tr.Entity:GetClass()] then
 			self:Fail()
 		elseif self.EndCrack <= CurTime() then
 			self:Succeed()
