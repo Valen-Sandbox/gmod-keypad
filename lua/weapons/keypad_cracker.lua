@@ -195,7 +195,7 @@ end
 
 -- Adapted from Wiremod's keypad code
 local function crackWiremodKeypad(ent)
-	Wire_TriggerOutput(ent, "Valid", 1)
+	WireLib.TriggerOutput(ent, "Valid", 1)
 	ent:SetDisplayText("y")
 	ent:EmitSound("buttons/button9.wav")
 
@@ -206,7 +206,7 @@ local function crackWiremodKeypad(ent)
 			ent:SetDisplayText("")
 			ent.CurrentNum = 0
 
-			Wire_TriggerOutput(ent, "Valid", 0)
+			WireLib.TriggerOutput(ent, "Valid", 0)
 		end
 	end)
 end

@@ -58,7 +58,7 @@ function ENT:Process(granted)
 						numpad.Activate(owner, key, true)
 
 						if WireLib then
-							Wire_TriggerOutput(self, outputKey, self.KeypadData.OutputOn)
+							WireLib.TriggerOutput(self, outputKey, self.KeypadData.OutputOn)
 						end
 					end
 				end)
@@ -68,7 +68,7 @@ function ENT:Process(granted)
 						numpad.Deactivate(owner, key, true)
 
 						if WireLib then
-							Wire_TriggerOutput(self, outputKey, self.KeypadData.OutputOff)
+							WireLib.TriggerOutput(self, outputKey, self.KeypadData.OutputOff)
 						end
 					end
 				end)
@@ -127,8 +127,8 @@ function ENT:Reset()
 	self:SetSecure(self.KeypadData.Secure)
 
 	if WireLib then
-		Wire_TriggerOutput(self, "Access Granted", self.KeypadData.OutputOff)
-		Wire_TriggerOutput(self, "Access Denied", self.KeypadData.OutputOff)
+		WireLib.TriggerOutput(self, "Access Granted", self.KeypadData.OutputOff)
+		WireLib.TriggerOutput(self, "Access Denied", self.KeypadData.OutputOff)
 	end
 end
 
