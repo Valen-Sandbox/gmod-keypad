@@ -22,7 +22,7 @@ end
 function ENT:Process(granted)
 	local length, repeats, delay, initdelay, key, outputKey
 
-	if granted then
+	if(granted) then
 		self:SetStatus(self.Status_Granted)
 
 		length = self.KeypadData.LengthGranted
@@ -45,16 +45,16 @@ function ENT:Process(granted)
 	local owner = self:GetKeypadOwner()
 
 	timer.Simple(math.max(initdelay + length * (repeats + 1) + delay * repeats + 0.25, 2), function() -- 0.25 after last timer
-		if IsValid(self) then
+		if(IsValid(self)) then
 			self:Reset()
 		end
 	end)
 
 	timer.Simple(initdelay, function()
-		if IsValid(self) then
+		if(IsValid(self)) then
 			for i = 0, repeats do
 				timer.Simple(length * i + delay * i, function()
-					if IsValid(self) and IsValid(owner) then
+					if(IsValid(self) and IsValid(owner)) then
 						numpad.Activate(owner, key, true)
 
 						if WireLib then
@@ -64,7 +64,7 @@ function ENT:Process(granted)
 				end)
 
 				timer.Simple(length * (i + 1) + delay * i, function()
-					if IsValid(self) and IsValid(owner) then
+					if(IsValid(self) and IsValid(owner)) then
 						numpad.Deactivate(owner, key, true)
 
 						if WireLib then

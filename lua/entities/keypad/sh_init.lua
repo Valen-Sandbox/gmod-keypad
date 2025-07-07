@@ -2,7 +2,7 @@ ENT.Base = WireLib and "base_wire_entity" or "base_gmodentity"
 ENT.Type = "anim"
 
 ENT.Model = Model("models/props_lab/keypad.mdl")
-ENT.Spawnable = false
+ENT.Spawnable = true
 
 ENT.Scale = 0.02
 ENT.Value = ""
@@ -19,9 +19,6 @@ ENT.IsKeypad = true
 
 AccessorFunc(ENT, "m_Password", "Password", FORCE_STRING)
 AccessorFunc(ENT, "m_KeypadOwner", "KeypadOwner")
-
-duplicator.RegisterEntityClass("keypad", duplicator.GenericDuplicatorFunction, "Data")
-duplicator.RegisterEntityClass("keypad_wire", duplicator.GenericDuplicatorFunction, "Data")
 
 function ENT:Initialize()
 	self:SetModel(self.Model)
