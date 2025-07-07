@@ -5,7 +5,7 @@ ENT.Base = "base_gmodentity"
 ENT.Spawnable = false
 ENT.AdminSpawnable = false
 
-local crackTimeCvar = CreateConVar("keypad_deployed_crack_time", "45", {FCVAR_ARCHIVE}, "The number of seconds required for a deployed keypad cracker to crack a keypad.", 0)
+local crackTimeCvar = CreateConVar("keypad_deployed_crack_time", "45", {FCVAR_ARCHIVE + FCVAR_REPLICATED}, "The number of seconds required for a deployed keypad cracker to crack a keypad.", 0)
 local keypadPosOffset = Vector(1.25, -1.5, -1.25)
 local keypadAngOffset = Angle(-90, 180, 0)
 

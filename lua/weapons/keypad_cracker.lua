@@ -2,7 +2,7 @@
 
 AddCSLuaFile()
 
-local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE}, "The number of seconds required for a keypad cracker to crack a keypad.", 0)
+local keypad_crack_time = CreateConVar("keypad_crack_time", "30", {FCVAR_ARCHIVE + FCVAR_REPLICATED}, "The number of seconds required for a keypad cracker to crack a keypad.", 0)
 
 SWEP.PrintName = "Keypad Cracker"
 SWEP.Slot = 4
